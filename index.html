@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>MAGI SYSTEM CORE - AVANT-GARDE</title>
+    <style>
+        :root { 
+            --magi-orange: #ff9d00; 
+            --magi-blue: #008cff; 
+            --magi-red: #ff3300;
+            --bg-dark: #000; 
+        }
+        body, html { margin: 0; padding: 0; background: var(--bg-dark); color: var(--magi-orange); font-family: 'Courier New', monospace; height: 100vh; overflow: hidden; }
+
+        /* [UI 1] 시작 레이어 */
+        #idle-ui { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            background: #000; z-index: 9999; 
+        }
+        .init-btn { 
+            background: transparent; border: 2px solid var(--magi-orange); color: var(--magi-orange); 
+            padding: 20px 60px; font-size: 20px; font-weight: bold; cursor: pointer; 
+            letter-spacing: 10px; transition: 0.3s; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); 
+        }
+        .init-btn:hover { background: var(--magi-orange); color: #000; box-shadow: 0 0 50px var(--magi-orange); }
+
+        /* [UI 2] 메인 레이어 */
+        #active-ui { display: none; height: 100vh; padding: 20px; box-sizing: border-box; flex-direction: column; }
+        
+        .header { display: flex; justify-content: space-between; border-bottom: 3px double var(--magi-orange); padding-bottom: 5px; margin-bottom: 15px; font-size: 12px; }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; flex-grow: 1; min-height: 0; }
+        
+        /* 외부 패널 */
+        .panel { 
+            border: 2px solid transparent; 
+            background: rgba(255,157,0,0.02); 
+            display: flex; flex-direction: column; overflow: hidden; position: relative; transition: all 0.5s; 
+            --glow-color: var(--magi-orange);
+            --border-w: 2px;
+        }
+        .panel.off { --glow-color: #333; opacity: 0.4; filter: grayscale(1); transform: scale(0.98); }
+        .panel-header { background: var(--magi-orange); color: #000; padding: 5px 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 스위치 */
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border: 1px solid var(--magi-orange); }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 2px; background-color: var(--magi-orange); transition: .4s; }
+        input:checked + .slider { background-color: var(--magi-orange); }
+        input:checked + .slider:before { transform: translateX(20px); background-color: #000; }
+
+        /* 결과 출력 박스에 글로우 효과를 주기 위한 래퍼(Wrapper) */
+        .output-glow-wrapper {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid transparent;
+            --border-w: 1px;
+            --glow-color: var(--magi-orange);
+            margin: 10px;
+            margin-top: 5px;
+            min-height: 0; /* 컨테이너가 무한히 커지는 것을 방지하여 내부 스크롤 활성화 */
+        }
+        .conclusion-panel .output-glow-wrapper { --glow-color: var(--magi-blue); }
+
+        .panel-content { 
+            padding: 10px; overflow-y: auto; flex-grow: 1; font-size: 13px; 
+            line-height: 1.8; white-space: pre-wrap; scrollbar-width: thin; 
+            min-height: 0; /* 스크롤 활성화를 위한 필수 속성 */
+        }
+
+        .bottom-container { display: flex; gap: 20px; height: 200px; margin-top: 15px; flex-shrink: 0; }
+        
+        .log-panel { 
+            flex: 1; border: 1px solid transparent; display: flex; flex-direction: column; background: rgba(10,10,10,0.9); 
+            position: relative; --glow-color: var(--magi-orange); --border-w: 1px;
+        }
+        .log-header { font-size: 10px; padding: 3px 10px; border-bottom: 1px solid var(--magi-orange); opacity: 0.7; }
+        .log-content { 
+            flex: 1; padding: 10px; font-size: 11px; overflow-y: auto; 
+            color: #aaa; scrollbar-width: thin; min-height: 0; /* 스크롤 활성화를 위한 필수 속성 */
+        }
+        .log-entry { margin-bottom: 3px; border-left: 2px solid var(--magi-orange); padding-left: 5px; }
+        .log-entry.system { color: var(--magi-blue); }
+        .log-entry.error { color: var(--magi-red); border-color: var(--magi-red); }
+
+        .conclusion-panel { 
+            flex: 1.5; border: 2px solid transparent; display: flex; flex-direction: column; 
+            position: relative; --glow-color: var(--magi-blue); --border-w: 2px;
+        }
+        .conclusion-label { background: var(--magi-blue); color: #fff; padding: 5px; font-weight: bold; text-align: center; font-size: 12px; }
+
+        .input-bar { 
+            display: flex; gap: 10px; border: 2px solid transparent; padding: 15px; margin-top: 15px; background: #000; 
+            position: relative; --glow-color: var(--magi-orange); --border-w: 2px;
+        }
+        input[type="text"] { flex: 1; background: transparent; border: 1px solid var(--magi-orange); color: var(--magi-orange); padding: 12px; outline: none; }
+        button.exec { background: var(--magi-orange); color: #000; border: none; padding: 0 40px; font-weight: bold; cursor: pointer; }
+
+        .thinking { --glow-color: var(--magi-blue) !important; box-shadow: 0 0 20px rgba(0, 140, 255, 0.2); }
+
+        /* ----------------------------------------------------
+           스크롤바 커스텀 스타일 (테마 일치용)
+           ---------------------------------------------------- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+        ::-webkit-scrollbar-thumb { background: var(--magi-orange); border-radius: 3px; }
+        .conclusion-panel ::-webkit-scrollbar-thumb { background: var(--magi-blue); }
+
+        /* ----------------------------------------------------
+           BORDER GLOW 핵심 마스킹 및 그라데이션 CSS
+           ---------------------------------------------------- */
+        .panel::before, .log-panel::before, .conclusion-panel::before, .input-bar::before, .output-glow-wrapper::before,
+        .panel::after, .log-panel::after, .conclusion-panel::after, .input-bar::after, .output-glow-wrapper::after {
+            content: "";
+            position: absolute;
+            inset: calc(-1 * var(--border-w));
+            pointer-events: none;
+            padding: var(--border-w);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+
+        /* 기본 고정 테두리 */
+        .panel::before, .log-panel::before, .input-bar::before, .output-glow-wrapper::before { background: rgba(255, 157, 0, 0.3); z-index: 1; }
+        .conclusion-panel::before, .conclusion-panel .output-glow-wrapper::before { background: rgba(0, 140, 255, 0.3); z-index: 1; }
+        .panel.off::before, .panel.off .output-glow-wrapper::before { background: #333; }
+
+        /* 동적 마우스 추적 테두리 */
+        .panel::after, .log-panel::after, .conclusion-panel::after, .input-bar::after, .output-glow-wrapper::after {
+            --spread: calc(15deg + (var(--edge-proximity, 0) * 0.4deg));
+            background: conic-gradient(
+                from calc(var(--cursor-angle, 0deg) - var(--spread)) at 50% 50%,
+                transparent 0deg,
+                var(--glow-color) var(--spread),
+                transparent calc(var(--spread) * 2)
+            );
+            z-index: 2;
+            transition: opacity 0.3s;
+        }
+        .panel.off::after, .panel.off .output-glow-wrapper::after { opacity: 0; }
+    </style>
+</head>
+<body>
+
+<div id="idle-ui">
+    <button class="init-btn" onclick="startSystem()">CONNECT TO MAGI</button>
+</div>
+
+<div id="active-ui">
+    <div class="header">
+        <div id="model-id">MAGI SYSTEM V 4.1.8</div>
+        <div id="sync-text">STATUS: CONNECTING</div>
+    </div>
+
+    <div class="main-grid">
+        <div class="panel" id="casper-box">
+            <div class="panel-header">
+                <span>CASPER (Gemini)</span>
+                <label class="switch"><input type="checkbox" id="casper-sw" checked onchange="togglePanel('casper')"><span class="slider"></span></label>
+            </div>
+            <div class="output-glow-wrapper">
+                <div id="casper-output" class="panel-content">연결 중...</div>
+            </div>
+        </div>
+        <div class="panel" id="balthasar-box">
+            <div class="panel-header">
+                <span>BALTHASAR (Qwen3-32B)</span>
+                <label class="switch"><input type="checkbox" id="balthasar-sw" checked onchange="togglePanel('balthasar')"><span class="slider"></span></label>
+            </div>
+            <div class="output-glow-wrapper">
+                <div id="balthasar-output" class="panel-content">READY.</div>
+            </div>
+        </div>
+        <div class="panel" id="melchior-box">
+            <div class="panel-header">
+                <span>MELCHIOR (gpt-oss-120b)</span>
+                <label class="switch"><input type="checkbox" id="melchior-sw" checked onchange="togglePanel('melchior')"><span class="slider"></span></label>
+            </div>
+            <div class="output-glow-wrapper">
+                <div id="melchior-output" class="panel-content">READY.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-container">
+        <div class="log-panel">
+            <div class="log-header">SYSTEM_KERNEL_LOG</div>
+            <div class="output-glow-wrapper">
+                <div id="log-content" class="log-content"></div>
+            </div>
+        </div>
+        <div class="conclusion-panel">
+            <div class="conclusion-label">MAGI FINAL CONCLUSION</div>
+            <div class="output-glow-wrapper">
+                <div id="conclusion-output" class="panel-content" style="color:var(--magi-blue)">AWAITING INPUT...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-bar">
+        <input type="text" id="magiQuery" placeholder="TYPE COMMAND..." onkeypress="if(event.keyCode==13) runMagi()">
+        <button class="exec" onclick="runMagi()">EXECUTE</button>
+    </div>
+</div>
+
+<script>
+    const API_KEY = "AIzaSyBBALVkzLDIe1z0sOrMXCc8NaUJmehyhX0";
+    const GROQ_KEY = "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";
+    let VALID_MODEL_PATH = "";
+
+    function addLog(msg, type='normal') {
+        const log = document.getElementById('log-content');
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        log.prepend(entry);
+    }
+
+    async function startSystem() {
+        document.getElementById('idle-ui').style.display = 'none';
+        document.getElementById('active-ui').style.display = 'flex';
+        addLog("MAGI KERNEL BOOTING...", "system");
+        
+        try {
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`);
+            const data = await resp.json();
+            const foundModel = data.models.find(m => m.supportedGenerationMethods.includes('generateContent'));
+            
+            if (foundModel) {
+                VALID_MODEL_PATH = foundModel.name;
+                document.getElementById('casper-output').innerText = " READY.";
+                document.getElementById('sync-text').innerText = "STATUS: ONLINE";
+                addLog(`LINK SUCCESS: ${VALID_MODEL_PATH}`, "system");
+            }
+        } catch (e) {
+            document.getElementById('casper-output').innerText = "❌ 모델 로드 실패.";
+            addLog("CORE LINK FAILED.", "error");
+        }
+    }
+
+    function togglePanel(id) {
+        const isChecked = document.getElementById(`${id}-sw`).checked;
+        const box = document.getElementById(`${id}-box`);
+        const out = document.getElementById(`${id}-output`);
+        if(!isChecked) {
+            box.classList.add('off');
+            out.innerText = "<< SIGNAL LOST: DISCONNECTED >>";
+            addLog(`${id.toUpperCase()} CONNECTION SEVERED.`, 'error');
+        } else {
+            box.classList.remove('off');
+            out.innerText = "READY.";
+            addLog(`${id.toUpperCase()} LINK RESTORED.`, 'system');
+        }
+    }
+
+    async function runMagi() {
+        const query = document.getElementById('magiQuery').value.trim();
+        if(!query || !VALID_MODEL_PATH) return;
+
+        document.getElementById('magiQuery').value = "";
+        document.getElementById('conclusion-output').innerText = "SYNCHRONIZING...";
+        addLog(`EXECUTING: ${query}`);
+
+        const tasks = [];
+        const activeUnits = [];
+
+        // --- CASPER (Gemini) ---
+        if(document.getElementById('casper-sw').checked) {
+            activeUnits.push('casper');
+            const output = document.getElementById('casper-output');
+            output.innerHTML = '>> ANALYZING...';
+            document.getElementById('casper-box').classList.add('thinking');
+
+            const casperTask = (async () => {
+                const URL = `https://generativelanguage.googleapis.com/v1beta/${VALID_MODEL_PATH}:generateContent?key=${API_KEY}`;
+                try {
+                    const response = await fetch(URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: query }] }] })
+                    });
+                    const data = await response.json();
+                    if (data.candidates) {
+                        output.innerText = data.candidates[0].content.parts[0].text;
+                        output.scrollTop = 0;
+                        addLog("CASPER RESPONSE RECEIVED.");
+                    } else {
+                        output.innerText = "❌ 오류: " + data.error.message;
+                    }
+                } catch (e) {
+                    output.innerText = "🚨 통신 오류.";
+                    addLog("CASPER CRITICAL ERROR.", "error");
+                } finally {
+                    document.getElementById('casper-box').classList.remove('thinking');
+                }
+            })();
+            tasks.push(casperTask);
+        }
+
+        // Groq Units
+        const callGroq = (model, id) => {
+            if(!document.getElementById(`${id}-sw`).checked) return;
+            activeUnits.push(id);
+            const output = document.getElementById(`${id}-output`);
+            output.innerText = ">> ANALYZING...";
+            document.getElementById(`${id}-box`).classList.add('thinking');
+
+            const groqTask = fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ model: model, messages: [{ role: "user", content: query }] })
+            }).then(r => r.json()).then(data => {
+                output.innerText = data.choices[0].message.content;
+                output.scrollTop = 0;
+                addLog(`${id.toUpperCase()} RESPONSE RECEIVED.`);
+            }).catch(() => {
+                output.innerText = "🚨 분석 실패.";
+                addLog(`${id.toUpperCase()} FAIL.`, "error");
+            }).finally(() => {
+                document.getElementById(`${id}-box`).classList.remove('thinking');
+            });
+            tasks.push(groqTask);
+        };
+
+        // 변경된 부분: Llama 70B를 Qwen3-32B로 교체
+        callGroq("Qwen/Qwen3-32B", "balthasar");
+        callGroq("openai/gpt-oss-120b", "melchior");
+
+        await Promise.allSettled(tasks);
+
+        // --- FINAL CONCLUSION ---
+        setTimeout(async () => {
+            let contextText = "";
+            activeUnits.forEach(u => {
+                contextText += `[${u.toUpperCase()}]:\n${document.getElementById(`${u}-output`).innerText}\n\n`;
+            });
+            if(!contextText) return;
+            
+            try {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        // 변경된 부분: 최종 결론 도출 모델도 Qwen/Qwen3-32B로 교체
+                        model: "Qwen/Qwen3-32B",
+                        messages: [{ role: "user", content: "종합 요약 및 최종 결론을 내라. 불필요한 서론 없이 결론만 말해:\n\n" + contextText }] 
+                    })
+                });
+                const data = await res.json();
+                document.getElementById('conclusion-output').innerText = data.choices[0].message.content;
+                document.getElementById('conclusion-output').scrollTop = 0;
+                addLog("SYNCHRONIZATION COMPLETE.", "system");
+            } catch (e) { 
+                addLog("CONCLUSION UNIT FAILED.", "error"); 
+            }
+        }, 500);
+    }
+</script>
+
+<script>
+    document.addEventListener('mousemove', (e) => {
+        const glowElements = document.querySelectorAll('.panel, .log-panel, .conclusion-panel, .input-bar, .output-glow-wrapper');
+        
+        glowElements.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const cx = rect.width / 2;
+            const cy = rect.height / 2;
+            const dx = x - cx;
+            const dy = y - cy;
+            
+            let kx = Infinity;
+            let ky = Infinity;
+            if (dx !== 0) kx = cx / Math.abs(dx);
+            if (dy !== 0) ky = cy / Math.abs(dy);
+            const edge = Math.min(Math.max(1 / Math.min(kx, ky), 0), 1);
+            
+            let degrees = 0;
+            if (dx !== 0 || dy !== 0) {
+                const radians = Math.atan2(dy, dx);
+                degrees = radians * (180 / Math.PI) + 90;
+                if (degrees < 0) degrees += 360;
+            }
+            
+            el.style.setProperty('--edge-proximity', (edge * 100).toFixed(3));
+            el.style.setProperty('--cursor-angle', degrees.toFixed(3) + 'deg');
+        });
+    });
+</script>
+</body>
+</html>
